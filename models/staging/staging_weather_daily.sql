@@ -20,7 +20,7 @@ WITH daily_raw AS (
                 (json_data->>'pres')::NUMERIC AS avg_pressure_hpa,
                 (json_data->>'tsun')::INTEGER AS sun_minutes
         FROM daily_raw
-    )
-    SELECT * 
-    FROM daily_flattened
+)
+SELECT * 
+FROM daily_flattened
   
