@@ -13,4 +13,4 @@ SELECT
   SUM(sun_minutes) AS sum_weekly_sun_minutes
 FROM {{ ref('prep_weather_daily') }}
 GROUP BY airport_code, date_trunc('week', date)
-ORDER BY airport_code, week;
+ORDER BY airport_code, week
