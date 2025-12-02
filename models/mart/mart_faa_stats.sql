@@ -1,41 +1,54 @@
-WITH departures AS (
-    SELECT origin AS faa, COUNT(DISTINCT dest) AS unique_departures
-    FROM {{ ref('prep_flights') }}
-    GROUP BY origin
+WITH departures AS ( 
+	SELECT origin AS faa
+			,COUNT(DISTINCT dest) AS nunique_to
+			,COUNT(sched_dep_time) AS dep_planned
+			,SUM(cancelled) AS dep_cancelled
+			,SUM(diverted) AS dep_diverted
+			,COUNT(arr_time) AS dep_n_flights
+			-- ,COUNT(DISTINCT tail_number) AS dep_nunique_tails -- BONUS TASK
+			-- ,COUNT(DISTINCT airline) AS dep_nunique_airlines -- BONUS TASK
+	FROM {{ref('prep_flights')}} 
+	GROUP BY origin
+	ORDER BY origin
 ),
 arrivals AS (
-    SELECT dest AS faa, COUNT(DISTINCT origin) AS unique_arrivals
-    FROM {{ ref('prep_flights') }}
-    GROUP BY dest
+	SELECT dest AS faa
+			,COUNT(DISTINCT origin) AS nunique_from
+			,COUNT(sched_dep_time) AS arr_planned
+			,SUM(cancelled) AS arr_cancelled
+			,SUM(diverted) AS arr_diverted
+			,COUNT(arr_time) AS arr_n_flights
+			-- ,COUNT(DISTINCT tail_number) AS arr_nunique_tails -- BONUS TASK
+			-- ,COUNT(DISTINCT airline) AS arr_nunique_airlines -- BONUS TASK
+	FROM {{ref('prep_flights')}}
+	GROUP BY dest
+	ORDER BY dest
 ),
-flight_totals AS (
-    SELECT 
-        faa,
-        COUNT(*) AS total_planned,
-        SUM(CASE WHEN cancelled = 1 THEN 1 ELSE 0 END) AS total_canceled,
-        SUM(CASE WHEN diverted = 1 THEN 1 ELSE 0 END) AS total_diverted,
-        SUM(CASE WHEN cancelled = 0 AND diverted = 0 THEN 1 ELSE 0 END) AS total_actual
-    FROM (
-        SELECT origin AS faa, cancelled, diverted FROM {{ ref('prep_flights') }}
-        UNION ALL
-        SELECT dest AS faa, cancelled, diverted FROM {{ ref('prep_flights') }}
-    ) x
-    GROUP BY faa
+total_stats AS (
+	SELECT faa
+			,nunique_to
+			,nunique_from
+	--		,(nunique_to + nunique_from)::NUMERIC/2 AS n_connections -- fractions would indicate that for the number of connections to!=from 
+			,dep_planned + arr_planned AS total_planned
+			,dep_cancelled + arr_cancelled AS total_cancelled
+			,dep_diverted + arr_diverted AS total_diverted
+	--		,((dep_cancelled + arr_cancelled + dep_diverted + arr_diverted)::NUMERIC/(dep_planned + arr_planned)::NUMERIC)*100 AS percent_change -- BONUS TASK
+			,dep_n_flights + arr_n_flights AS total_flights
+	--		,(dep_nunique_tails + arr_nunique_tails)::NUMERIC/2 AS nunique_tails -- fractions would indicate that for the number of tails to!=from -- BONUS TASK
+	--		,(dep_nunique_airlines + arr_nunique_airlines)::NUMERIC/2 AS nunique_airlines -- fractions would indicate that for the number of airlines to!=from -- BONUS TASK
+	FROM departures
+	JOIN arrivals
+	USING (faa)
 )
-SELECT 
-    pa.faa,
-    pa.name,
-    COALESCE(d.unique_departures, 0) AS unique_departure_connections,
-    COALESCE(a.unique_arrivals, 0) AS unique_arrival_connections,
-    COALESCE(t.total_planned, 0) AS total_planned_flights,
-    COALESCE(t.total_canceled, 0) AS total_canceled_flights,
-    COALESCE(t.total_diverted, 0) AS total_diverted_flights,
-    COALESCE(t.total_actual, 0) AS total_actual_flights
-FROM {{ ref('prep_airports') }} pa
-LEFT JOIN departures d ON pa.faa = d.faa
-LEFT JOIN arrivals   a ON pa.faa = a.faa
-LEFT JOIN flight_totals t ON pa.faa = t.faa
-ORDER BY pa.faa
+SELECT a.city
+		,a.country
+		,a.name
+		, t.* 
+FROM total_stats t
+LEFT JOIN FROM {{ref('prep_flights')}} a
+USING (faa)
+ORDER BY total_diverted desc
+
 
 
 
