@@ -20,7 +20,7 @@ arrivals AS (
 			,COUNT(arr_time) AS arr_n_flights
 			-- ,COUNT(DISTINCT tail_number) AS arr_nunique_tails -- BONUS TASK
 			-- ,COUNT(DISTINCT airline) AS arr_nunique_airlines -- BONUS TASK
-	FROM {{ref('prep_flights')}}
+	FROM {{ref('prep_flights')}} 
 	GROUP BY dest
 	ORDER BY dest
 ),
@@ -45,9 +45,10 @@ SELECT a.city
 		,a.name
 		, t.* 
 FROM total_stats t
-LEFT JOIN FROM {{ref('prep_flights')}} a
+LEFT JOIN {{ref('prep_airports')}} a
 USING (faa)
-ORDER BY total_diverted desc
+ORDER BY total_diverted DESC
+
 
 
 
